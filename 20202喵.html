@@ -21,22 +21,18 @@ const sndMeow = new Audio("sound/meow.mp3");
 const sndHit  = new Audio("sound/hit.mp3");
 const sndEat  = new Audio("sound/eat.mp3");
 
-/* ================= 🖼️ 圖片 ================= */
-// 🐱 a 圖：貓貓
-const imgPlayer = new Image();
-imgPlayer.src = "img/player.png";
+/* ================= 🖼️ 圖片（照你檔名） ================= */
+const imgPlayer = new Image();        // 🐱 貓
+imgPlayer.src = "img/player.png.png";
 
-// 🤖 敵人
-const imgEnemy = new Image();
-imgEnemy.src = "img/enemy.png";
+const imgFish = new Image();          // 🐟 魚
+imgFish.src = "img/fish.png.png";
 
-// 🐟 b 圖：魚
-const imgFish = new Image();
-imgFish.src = "img/fish.png";
+const imgBoom = new Image();          // 💥 爆炸
+imgBoom.src = "img/explosion.png.png";
 
-// 💥 c 圖：爆炸
-const imgBoom = new Image();
-imgBoom.src = "img/explosion.png";
+const imgEnemy = new Image();         // 🤖 敵人
+imgEnemy.src = "img/d.png";
 
 /* ================= 🐱 玩家 ================= */
 const player = {
@@ -100,7 +96,7 @@ function update(){
   bullets.forEach(b => b.y -= b.speed);
   bullets = bullets.filter(b => b.y > 0);
 
-  // 🤖 敵人追蹤
+  // 🤖 敵人追你
   enemies.forEach(e=>{
     if(!e.alive) return;
     const dx = player.x - e.x;
@@ -116,7 +112,7 @@ function update(){
     }
   });
 
-  // 💥 子彈命中
+  // 💥 子彈打敵人
   bullets.forEach((b,bi)=>{
     enemies.forEach(e=>{
       if(e.alive && Math.abs(b.x-e.x)<20 && Math.abs(b.y-e.y)<20){
@@ -152,7 +148,7 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // 🐱 玩家（a 圖）
+  // 🐱 貓貓主角
   ctx.drawImage(imgPlayer, player.x-16, player.y-16, 32, 32);
 
   // ❤️ 血量條
@@ -172,12 +168,12 @@ function draw(){
       ctx.drawImage(imgEnemy, e.x-16, e.y-16, 32, 32);
   });
 
-  // 🐟 魚（b 圖）
+  // 🐟 魚
   fishes.forEach(f=>{
     ctx.drawImage(imgFish, f.x-12, f.y-12, 24, 24);
   });
 
-  // 💥 爆炸（c 圖）
+  // 💥 爆炸
   explosions.forEach(ex=>{
     ctx.drawImage(imgBoom, ex.x-ex.r, ex.y-ex.r, ex.r*2, ex.r*2);
   });
