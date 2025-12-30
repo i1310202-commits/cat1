@@ -22,28 +22,18 @@ const sndHit  = new Audio("sound/hit.mp3");
 const sndEat  = new Audio("sound/eat.mp3");
 
 /* ================= 🖼️ 圖片 ================= */
-// 🐱 a 圖：貓貓
-const imgPlayer = new Image();
-imgPlayer.src = "img/player.png";
-
-// 🤖 敵人
-const imgEnemy = new Image();
-imgEnemy.src = "img/enemy.png";
-
-// 🐟 b 圖：魚
-const imgFish = new Image();
-imgFish.src = "img/fish.png";
-
-// 💥 c 圖：爆炸
-const imgBoom = new Image();
-imgBoom.src = "img/explosion.png";
+const imgPlayer = new Image(); imgPlayer.src = "img/player.png.png";
+const imgFish   = new Image(); imgFish.src   = "img/fish.png.png";
+const imgBoom   = new Image(); imgBoom.src   = "img/explosion.png.png";
+const imgEnemy  = new Image(); imgEnemy.src  = "img/d.png";
 
 /* ================= 🐱 玩家 ================= */
 const player = {
   x:400, y:250,
   speed:4,
   hp:100,
-  maxHp:100
+  maxHp:100,
+  hurtCooldown: 0
 };
 
 /* ================= 📦 物件 ================= */
@@ -59,36 +49,44 @@ document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 /* ================= 🤖 生成 ================= */
 function spawnEnemy(){
-  enemies.push({
-    x:Math.random()*760+20,
-    y:Math.random()*460+20,
-    speed:1.3,
-    alive:true
-  });
+  let x,y;
+  do{
+    x = Math.random()*760+20;
+    y = Math.random()*460+20;
+  }while(Math.hypot(x-player.x, y-player.y) < 120);
+
+  enemies.push({ x,y, speed:1.3, alive:true });
 }
+
 function spawnFish(){
   fishes.push({
     x:Math.random()*760+20,
     y:Math.random()*460+20
   });
 }
+
 for(let i=0;i<5;i++) spawnEnemy();
 for(let i=0;i<3;i++) spawnFish();
 
 /* ================= 💥 射擊 ================= */
 function shoot(){
-  bullets.push({x:player.x, y:player.y, speed:7});
+  bullets.push({ x:player.x, y:player.y, speed:7 });
   sndMeow.currentTime = 0;
   sndMeow.play();
 }
 
 /* ================= 🔄 更新 ================= */
 function update(){
-  // WASD
+
+  // WASD 移動
   if(keys["w"]) player.y -= player.speed;
   if(keys["s"]) player.y += player.speed;
   if(keys["a"]) player.x -= player.speed;
   if(keys["d"]) player.x += player.speed;
+
+  // 邊界限制
+  player.x = Math.max(16, Math.min(784, player.x));
+  player.y = Math.max(16, Math.min(484, player.y));
 
   // 射擊
   if(keys[" "] && bullets.length < 5){
@@ -100,48 +98,56 @@ function update(){
   bullets.forEach(b => b.y -= b.speed);
   bullets = bullets.filter(b => b.y > 0);
 
-  // 🤖 敵人追蹤
+  // 🤖 敵人追蹤 + 傷害冷卻
   enemies.forEach(e=>{
     if(!e.alive) return;
     const dx = player.x - e.x;
     const dy = player.y - e.y;
     const d = Math.hypot(dx,dy);
+
     e.x += dx/d * e.speed;
     e.y += dy/d * e.speed;
 
-    if(d < 26){
-      player.hp -= 0.3;
+    if(d < 26 && player.hurtCooldown <= 0){
+      player.hp -= 5;
       sndHit.currentTime = 0;
       sndHit.play();
+      player.hurtCooldown = 30;
     }
   });
 
-  // 💥 子彈命中
-  bullets.forEach((b,bi)=>{
-    enemies.forEach(e=>{
+  if(player.hurtCooldown > 0) player.hurtCooldown--;
+
+  // 💥 子彈命中（穩定版）
+  for(let bi = bullets.length-1; bi >= 0; bi--){
+    const b = bullets[bi];
+    for(const e of enemies){
       if(e.alive && Math.abs(b.x-e.x)<20 && Math.abs(b.y-e.y)<20){
-        e.alive=false;
+        e.alive = false;
         bullets.splice(bi,1);
-        explosions.push({x:e.x,y:e.y,r:5});
+        explosions.push({ x:e.x, y:e.y, r:6 });
         spawnEnemy();
+        break;
       }
-    });
-  });
+    }
+  }
 
   // 💥 爆炸動畫
-  explosions.forEach(ex=>ex.r+=2);
-  explosions = explosions.filter(ex=>ex.r<40);
+  explosions.forEach(ex => ex.r += 2);
+  explosions = explosions.filter(ex => ex.r < 40);
 
   // 🐟 吃魚回血
   fishes.forEach((f,fi)=>{
-    if(Math.hypot(player.x-f.x,player.y-f.y)<25){
-      player.hp = Math.min(player.maxHp, player.hp+20);
+    if(Math.hypot(player.x-f.x,player.y-f.y) < 25){
+      player.hp = Math.min(player.maxHp, player.hp + 20);
       fishes.splice(fi,1);
       spawnFish();
+      sndEat.currentTime = 0;
       sndEat.play();
     }
   });
 
+  // 死亡
   if(player.hp <= 0){
     alert("貓貓倒下了 QQ");
     location.reload();
@@ -152,8 +158,9 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // 🐱 玩家（a 圖）
-  ctx.drawImage(imgPlayer, player.x-16, player.y-16, 32, 32);
+  // 🐱 玩家
+  if(imgPlayer.complete)
+    ctx.drawImage(imgPlayer, player.x-16, player.y-16, 32, 32);
 
   // ❤️ 血量條
   ctx.fillStyle="red";
@@ -164,22 +171,24 @@ function draw(){
 
   // 💥 子彈
   ctx.fillStyle="yellow";
-  bullets.forEach(b=>ctx.fillRect(b.x-2,b.y-6,4,8));
+  bullets.forEach(b => ctx.fillRect(b.x-2,b.y-6,4,8));
 
   // 🤖 敵人
   enemies.forEach(e=>{
-    if(e.alive)
+    if(e.alive && imgEnemy.complete)
       ctx.drawImage(imgEnemy, e.x-16, e.y-16, 32, 32);
   });
 
-  // 🐟 魚（b 圖）
+  // 🐟 魚
   fishes.forEach(f=>{
-    ctx.drawImage(imgFish, f.x-12, f.y-12, 24, 24);
+    if(imgFish.complete)
+      ctx.drawImage(imgFish, f.x-12, f.y-12, 24, 24);
   });
 
-  // 💥 爆炸（c 圖）
+  // 💥 爆炸
   explosions.forEach(ex=>{
-    ctx.drawImage(imgBoom, ex.x-ex.r, ex.y-ex.r, ex.r*2, ex.r*2);
+    if(imgBoom.complete)
+      ctx.drawImage(imgBoom, ex.x-ex.r, ex.y-ex.r, ex.r*2, ex.r*2);
   });
 }
 
